@@ -99,74 +99,6 @@ function usage() {
     console.info('usage: node main.js --port <port> --mode \
     <adl/local/remote/pai/kubeflow/frameworkcontroller/aml> --start_mode <new/resume> --experiment_id <id> --foreground <true/false>');
 }
-const strPort = utils_1.parseArg(['--port', '-p']);
-if (!strPort || strPort.length === 0) {
-    usage();
-    process.exit(1);
-}
-const foregroundArg = utils_1.parseArg(['--foreground', '-f']);
-if (!('true' || 'false').includes(foregroundArg.toLowerCase())) {
-    console.log(`FATAL: foreground property should only be true or false`);
-    usage();
-    process.exit(1);
-}
-const foreground = foregroundArg.toLowerCase() === 'true' ? true : false;
-const port = parseInt(strPort, 10);
-const mode = utils_1.parseArg(['--mode', '-m']);
-if (!['adl', 'local', 'remote', 'pai', 'kubeflow', 'frameworkcontroller', 'dlts', 'aml'].includes(mode)) {
-    console.log(`FATAL: unknown mode: ${mode}`);
-    usage();
-    process.exit(1);
-}
-const startMode = utils_1.parseArg(['--start_mode', '-s']);
-if (![manager_1.ExperimentStartUpMode.NEW, manager_1.ExperimentStartUpMode.RESUME].includes(startMode)) {
-    console.log(`FATAL: unknown start_mode: ${startMode}`);
-    usage();
-    process.exit(1);
-}
-const experimentId = utils_1.parseArg(['--experiment_id', '-id']);
-if (experimentId.trim().length < 1) {
-    console.log(`FATAL: cannot resume the experiment, invalid experiment_id: ${experimentId}`);
-    usage();
-    process.exit(1);
-}
-const logDir = utils_1.parseArg(['--log_dir', '-ld']);
-if (logDir.length > 0) {
-    if (!fs.existsSync(logDir)) {
-        console.log(`FATAL: log_dir ${logDir} does not exist`);
-    }
-}
-const logLevel = utils_1.parseArg(['--log_level', '-ll']);
-if (logLevel.length > 0 && !log_1.logLevelNameMap.has(logLevel)) {
-    console.log(`FATAL: invalid log_level: ${logLevel}`);
-}
-const readonlyArg = utils_1.parseArg(['--readonly', '-r']);
-if (!('true' || 'false').includes(readonlyArg.toLowerCase())) {
-    console.log(`FATAL: readonly property should only be true or false`);
-    usage();
-    process.exit(1);
-}
-const readonly = readonlyArg.toLowerCase() == 'true' ? true : false;
-const dispatcherPipe = utils_1.parseArg(['--dispatcher_pipe']);
-initStartupInfo(startMode, experimentId, port, mode, logDir, logLevel, readonly, dispatcherPipe);
-utils_1.mkDirP(utils_1.getLogDir())
-    .then(async () => {
-    try {
-        await initContainer(foreground, mode);
-        const restServer = component.get(nniRestServer_1.NNIRestServer);
-        await restServer.start();
-        const log = log_1.getLogger();
-        log.info(`Rest server listening on: ${restServer.endPoint}`);
-    }
-    catch (err) {
-        const log = log_1.getLogger();
-        log.error(`${err.stack}`);
-        throw err;
-    }
-})
-    .catch((err) => {
-    console.error(`Failed to create log dir: ${err.stack}`);
-});
 async function cleanUp() {
     const log = log_1.getLogger();
     let hasError = false;
@@ -189,6 +121,77 @@ async function cleanUp() {
         process.exit(hasError ? 1 : 0);
     }
 }
-process.on('SIGTERM', cleanUp);
-process.on('SIGBREAK', cleanUp);
-process.on('SIGINT', cleanUp);
+function main() {
+    const strPort = utils_1.parseArg(['--port', '-p']);
+    if (!strPort || strPort.length === 0) {
+        usage();
+        process.exit(1);
+    }
+    const foregroundArg = utils_1.parseArg(['--foreground', '-f']);
+    if (!('true' || 'false').includes(foregroundArg.toLowerCase())) {
+        console.log(`FATAL: foreground property should only be true or false`);
+        usage();
+        process.exit(1);
+    }
+    const foreground = foregroundArg.toLowerCase() === 'true' ? true : false;
+    const port = parseInt(strPort, 10);
+    const mode = utils_1.parseArg(['--mode', '-m']);
+    if (!['adl', 'local', 'remote', 'pai', 'kubeflow', 'frameworkcontroller', 'dlts', 'aml'].includes(mode)) {
+        console.log(`FATAL: unknown mode: ${mode}`);
+        usage();
+        process.exit(1);
+    }
+    const startMode = utils_1.parseArg(['--start_mode', '-s']);
+    if (![manager_1.ExperimentStartUpMode.NEW, manager_1.ExperimentStartUpMode.RESUME].includes(startMode)) {
+        console.log(`FATAL: unknown start_mode: ${startMode}`);
+        usage();
+        process.exit(1);
+    }
+    const experimentId = utils_1.parseArg(['--experiment_id', '-id']);
+    if (experimentId.trim().length < 1) {
+        console.log(`FATAL: cannot resume the experiment, invalid experiment_id: ${experimentId}`);
+        usage();
+        process.exit(1);
+    }
+    const logDir = utils_1.parseArg(['--log_dir', '-ld']);
+    if (logDir.length > 0) {
+        if (!fs.existsSync(logDir)) {
+            console.log(`FATAL: log_dir ${logDir} does not exist`);
+        }
+    }
+    const logLevel = utils_1.parseArg(['--log_level', '-ll']);
+    if (logLevel.length > 0 && !log_1.logLevelNameMap.has(logLevel)) {
+        console.log(`FATAL: invalid log_level: ${logLevel}`);
+    }
+    const readonlyArg = utils_1.parseArg(['--readonly', '-r']);
+    if (!('true' || 'false').includes(readonlyArg.toLowerCase())) {
+        console.log(`FATAL: readonly property should only be true or false`);
+        usage();
+        process.exit(1);
+    }
+    const readonly = readonlyArg.toLowerCase() == 'true' ? true : false;
+    const dispatcherPipe = utils_1.parseArg(['--dispatcher_pipe']);
+    initStartupInfo(startMode, experimentId, port, mode, logDir, logLevel, readonly, dispatcherPipe);
+    utils_1.mkDirP(utils_1.getLogDir())
+        .then(async () => {
+        try {
+            await initContainer(foreground, mode);
+            const restServer = component.get(nniRestServer_1.NNIRestServer);
+            await restServer.start();
+            const log = log_1.getLogger();
+            log.info(`Rest server listening on: ${restServer.endPoint}`);
+        }
+        catch (err) {
+            const log = log_1.getLogger();
+            log.error(`${err.stack}`);
+            throw err;
+        }
+    })
+        .catch((err) => {
+        console.error(`Failed to create log dir: ${err.stack}`);
+    });
+    process.on('SIGTERM', cleanUp);
+    process.on('SIGBREAK', cleanUp);
+    process.on('SIGINT', cleanUp);
+}
+exports.main = main;
