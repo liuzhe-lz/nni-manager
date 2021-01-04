@@ -246,7 +246,7 @@ class LocalTrainingService {
                     stream.end(0);
                     stream.emit('end');
                     this.jobStreamMap.delete(trialJob.id);
-                }, 5000);
+                }, 100);
             }
         }
         if (trialJob.gpuIndices !== undefined && trialJob.gpuIndices.length > 0 && this.gpuScheduler !== undefined) {
@@ -356,7 +356,7 @@ class LocalTrainingService {
                 }
                 this.jobQueue.shift();
             }
-            await utils_1.delay(5000);
+            await utils_1.delay(100);
         }
     }
     setTrialJobStatus(trialJob, newStatus) {

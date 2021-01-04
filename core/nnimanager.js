@@ -374,7 +374,7 @@ class NNIManager {
         }
         while (!['ERROR', 'STOPPING', 'STOPPED'].includes(this.status.status)) {
             this.dispatcher.sendCommand(commands_1.PING);
-            await utils_1.delay(1000 * 5);
+            await utils_1.delay(100);
         }
     }
     async requestTrialJobsStatus() {
